@@ -8,44 +8,58 @@ import {
   Truck, 
   ShoppingCart, 
   Users,
-  Globe
+  Globe,
+  LogOut,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth, User as AuthUser } from "@/contexts/AuthContext";
+import { useTranslation } from "@/contexts/TranslationContext";
+import { GoogleTranslate, GoogleTranslateStyles } from "./GoogleTranslate";
+import { SimpleGoogleTranslate } from "./SimpleGoogleTranslate";
 
 interface NavigationProps {
   currentPage: string;
   onPageChange: (page: string) => void;
+  user?: AuthUser | null;
 }
 
-export const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
+export const Navigation = ({ currentPage, onPageChange, user }: NavigationProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [language, setLanguage] = useState("EN");
+  const { logout } = useAuth();
+  const { language, setLanguage, t } = useTranslation();
 
   const navItems = [
-    { id: "home", label: "Home", icon: Leaf },
-    { id: "farmer", label: "Farmer", icon: Users },
-    { id: "distributor", label: "Distributor", icon: Truck },
-    { id: "retailer", label: "Retailer", icon: ShoppingCart },
-    { id: "consumer", label: "Consumer", icon: Scan },
+    { id: "home", label: t('nav.home'), icon: Leaf },
+    { id: "farmer", label: t('nav.farmer'), icon: Users },
+    { id: "distributor", label: t('nav.distributor'), icon: Truck },
+    { id: "retailer", label: t('nav.retailer'), icon: ShoppingCart },
+    { id: "consumer", label: t('nav.consumer'), icon: Scan },
   ];
 
-  const languages = ["EN", "ES", "FR", "HI"];
+  const languages = [
+    { code: 'en', label: 'EN', name: 'English' },
+    { code: 'hi', label: 'HI', name: 'Hindi' },
+    { code: 'or', label: 'OR', name: 'Odia' }
+  ];
 
   return (
-    <nav className="bg-card/80 backdrop-blur-md border-b border-border sticky top-0 z-50">
+    <>
+      <GoogleTranslateStyles />
+      <nav className="bg-card/80 backdrop-blur-md border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-3">
-            <div className="relative bg-gradient-to-br from-primary to-secondary p-2.5 rounded-xl shadow-lg animate-pulse-glow">
-              <Leaf className="h-7 w-7 text-primary-foreground" />
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="relative bg-gradient-to-br from-primary to-secondary p-2 sm:p-2.5 rounded-xl shadow-lg animate-pulse-glow">
+              <Leaf className="h-5 w-5 sm:h-7 sm:w-7 text-primary-foreground" />
               <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-xl opacity-20 animate-pulse"></div>
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold font-space bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+              <span className="text-lg sm:text-xl font-bold font-space bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
                 AgriTrace
               </span>
-              <span className="text-xs text-muted-foreground font-medium tracking-wider">
+              <span className="text-xs text-muted-foreground font-medium tracking-wider hidden sm:block">
                 FARM TO FORK
               </span>
             </div>
@@ -70,29 +84,42 @@ export const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
             ))}
           </div>
 
-          {/* Language Selector & Mobile Menu */}
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              {languages.map((lang) => (
+          {/* User Profile & Language Selector & Mobile Menu */}
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            {/* User Profile */}
+            {user ? (
+              <div className="flex items-center space-x-1 sm:space-x-2">
+                <div className="flex items-center space-x-1 sm:space-x-2 bg-muted rounded-lg px-2 sm:px-3 py-1">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span className="text-xs sm:text-sm font-medium truncate max-w-20 sm:max-w-none">{user.name}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
+                  </div>
+                </div>
                 <Button
-                  key={lang}
+                  variant="ghost"
                   size="sm"
-                  variant={language === lang ? "default" : "ghost"}
-                  onClick={() => setLanguage(lang)}
-                  className="h-7 px-2 text-xs"
+                  onClick={() => {
+                    logout();
+                    onPageChange("home");
+                  }}
+                  className="flex items-center gap-1 p-1 sm:p-2"
                 >
-                  {lang}
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('nav.logout')}</span>
                 </Button>
-              ))}
-            </div>
+              </div>
+            ) : null}
+
+            {/* Google Translate Widget */}
+            <SimpleGoogleTranslate className="hidden sm:flex" />
 
             {/* Mobile menu button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden"
+              className="md:hidden p-1 sm:p-2"
             >
               {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -118,10 +145,46 @@ export const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
                   <span>{label}</span>
                 </Button>
               ))}
+              
+              {/* Mobile Google Translate */}
+              <div className="border-t border-border pt-2 mt-2">
+                <div className="px-2 py-1">
+                  <SimpleGoogleTranslate className="w-full" />
+                </div>
+              </div>
+              
+              {/* Mobile Login/Logout Section */}
+              <div className="border-t border-border pt-2 mt-2">
+                {user ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 px-2 py-1">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{user.name}</span>
+                        <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        logout();
+                        onPageChange("home");
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full justify-start space-x-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>{t('nav.logout')}</span>
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         )}
       </div>
     </nav>
+    </>
   );
 };

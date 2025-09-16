@@ -7,11 +7,19 @@ import { Navigation } from "./components/Navigation";
 import { HeroSection } from "./components/HeroSection";
 import { FarmerDashboard } from "./components/FarmerDashboard";
 import { ConsumerScanner } from "./components/ConsumerScanner";
+import { DistributorDashboard } from "./components/DistributorDashboard";
+import { RetailerDashboard } from "./components/RetailerDashboard";
+import { LoginForm } from "./components/LoginForm";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { TranslationProvider } from "./contexts/TranslationContext";
+import { GoogleTranslate, GoogleTranslateStyles } from "./components/GoogleTranslate";
+import { SimpleGoogleTranslate } from "./components/SimpleGoogleTranslate";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+const AppContent = () => {
   const [currentPage, setCurrentPage] = useState("home");
+  const { user } = useAuth();
 
   const renderPage = () => {
     switch (currentPage) {
@@ -20,24 +28,48 @@ const App = () => {
       case "consumer":
         return <ConsumerScanner />;
       case "distributor":
-        return <div className="p-6 text-center text-muted-foreground">Distributor Dashboard - Coming Soon</div>;
+        if (user?.role === 'distributor') {
+          return <DistributorDashboard />;
+        } else {
+          return <LoginForm onSuccess={() => setCurrentPage("distributor")} />;
+        }
       case "retailer":
-        return <div className="p-6 text-center text-muted-foreground">Retailer Dashboard - Coming Soon</div>;
+        if (user?.role === 'retailer') {
+          return <RetailerDashboard />;
+        } else {
+          return <LoginForm onSuccess={() => setCurrentPage("retailer")} />;
+        }
       default:
         return <HeroSection onGetStarted={() => setCurrentPage("farmer")} />;
     }
   };
 
   return (
+    <div className="min-h-screen bg-background">
+      <GoogleTranslateStyles />
+      <Navigation currentPage={currentPage} onPageChange={setCurrentPage} user={user} />
+      {renderPage()}
+      
+      {/* Floating Translate Button */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <SimpleGoogleTranslate className="bg-card/90 backdrop-blur-md border border-border rounded-lg shadow-lg p-2" />
+      </div>
+    </div>
+  );
+};
+
+const App = () => {
+  return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <div className="min-h-screen bg-background">
-          <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />
-          {renderPage()}
-        </div>
-      </TooltipProvider>
+      <TranslationProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppContent />
+          </TooltipProvider>
+        </AuthProvider>
+      </TranslationProvider>
     </QueryClientProvider>
   );
 };

@@ -58,7 +58,7 @@ export const HeroSection = ({ onGetStarted }: HeroSectionProps) => {
               </Badge>
               
               <h1 className="text-4xl md:text-6xl font-bold font-space leading-tight animate-slide-up">
-                <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent shimmer">
+                <span className="text-green-500 from-primary via-secondary to-accent bg-clip-text text-transparent shimmer">
                   Farm to Fork,
                 </span>
                 <br />

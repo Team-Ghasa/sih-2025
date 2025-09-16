@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useTranslation } from "@/contexts/TranslationContext";
 import { 
   Upload, 
   Camera, 
@@ -17,10 +18,13 @@ import {
   CheckCircle,
   QrCode,
   Volume2,
-  Sparkles
+  Sparkles,
+  Navigation,
+  Loader2
 } from "lucide-react";
 
 export const FarmerDashboard = () => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     cropType: "",
     variety: "",
@@ -36,11 +40,83 @@ export const FarmerDashboard = () => {
   const [blockchainHash, setBlockchainHash] = useState<string>("");
   const [qrCode, setQrCode] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string>("");
+
+  // Auto-request location permission on component mount
+  useEffect(() => {
+    // Check if location is already set
+    if (formData.location) return;
+    
+    // Check if geolocation is supported
+    if (!navigator.geolocation) return;
+    
+    // Request permission silently (this will show browser permission dialog)
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        // Permission granted, but don't auto-fill location
+        // User can click "Get Location" button when ready
+      },
+      () => {
+        // Permission denied, silently fail
+      },
+      { timeout: 1000 }
+    );
+  }, []);
 
   const cropTypes = [
-    "Tomatoes", "Potatoes", "Carrots", "Lettuce", "Spinach", 
-    "Apples", "Oranges", "Bananas", "Rice", "Wheat", "Corn"
+    // Cereals & Grains
+    "Rice/Paddy", "Wheat", "Corn/Maize", "Millets (Ragi)", "Millets (Bajra)", "Millets (Jowar)",
+    
+    // Pulses
+    "Moong (Green Gram)", "Urad", "Horsegram", "Tur (Arhar)", "Gram/Chickpea", "Field Peas", "Lentils",
+    
+    // Oilseeds
+    "Mustard", "Sesame", "Groundnut", "Sunflower",
+    
+    // Cash Crops
+    "Cotton", "Sugarcane", "Jute", "Mesta",
+    
+    // Vegetables
+    "Tomato", "Potato", "Brinjal (Eggplant)", "Cauliflower", "Cabbage", "Onion", "Okra", "Cucumber",
+    
+    // Fruits
+    "Mango", "Banana", "Guava", "Papaya", "Orange", "Apple", "Grapes",
+    
+    // Specialty/Indigenous Crops (GI Tagged)
+    "Koraput Kalajeera Rice", "Kandhamal Haladi (Turmeric)", "Nayagarh Kanteimundi Brinjal",
+    
+    // Kewda Products
+    "Ganjam Kewda Flower", "Kewda Oil", "Kewda Attar"
   ];
+
+  // Get crop variants based on selected crop type
+  const getCropVariants = (cropType: string) => {
+    const variants: { [key: string]: string[] } = {
+      "Rice/Paddy": ["Basmati", "Non-Basmati", "Aromatic", "Short Grain", "Long Grain"],
+      "Koraput Kalajeera Rice": ["Traditional", "Organic", "Premium Grade"],
+      "Millets (Ragi)": ["Red Ragi", "White Ragi", "Brown Ragi"],
+      "Millets (Bajra)": ["Pearl Millet", "Hybrid", "Traditional"],
+      "Millets (Jowar)": ["Sweet Sorghum", "Grain Sorghum", "Forage Sorghum"],
+      "Moong (Green Gram)": ["Green Moong", "Yellow Moong", "Black Moong"],
+      "Tomato": ["Cherry", "Roma", "Beefsteak", "Plum", "Grape"],
+      "Potato": ["Russet", "Red", "Yukon Gold", "Fingerling", "Sweet Potato"],
+      "Brinjal (Eggplant)": ["Purple", "White", "Green", "Striped"],
+      "Nayagarh Kanteimundi Brinjal": ["Traditional", "Organic", "Premium"],
+      "Mango": ["Alphonso", "Dasheri", "Langra", "Chausa", "Totapuri"],
+      "Banana": ["Cavendish", "Red Banana", "Plantain", "Lady Finger"],
+      "Kandhamal Haladi (Turmeric)": ["Traditional", "Organic", "Premium Grade", "Powder"],
+      "Ganjam Kewda Flower": ["Fresh", "Dried", "Premium Grade"],
+      "Kewda Oil": ["Pure", "Concentrated", "Aromatic"],
+      "Kewda Attar": ["Traditional", "Premium", "Concentrated"],
+      "Cotton": ["BT Cotton", "Desi Cotton", "Hybrid"],
+      "Sugarcane": ["Co 86032", "Co 8371", "Co 0238", "Traditional"],
+      "Mustard": ["Yellow Mustard", "Brown Mustard", "Black Mustard"],
+      "Sesame": ["White Sesame", "Black Sesame", "Brown Sesame"]
+    };
+    
+    return variants[cropType] || ["Traditional", "Hybrid", "Organic", "Premium"];
+  };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -49,7 +125,7 @@ export const FarmerDashboard = () => {
 
   const runQualityCheck = async () => {
     if (images.length === 0) {
-      toast.error("Please upload at least one image first");
+      toast.error(t('message.upload_images_first'));
       return;
     }
 
@@ -66,7 +142,7 @@ export const FarmerDashboard = () => {
       setQrCode(qr);
       setIsProcessing(false);
       
-      toast.success(`Quality analysis complete! Score: ${score}%`);
+      toast.success(t('message.quality_check_complete').replace('{score}', score.toString()));
     }, 3000);
   };
 
@@ -80,16 +156,85 @@ export const FarmerDashboard = () => {
       speechSynthesis.speak(utterance);
     }
     
-    toast.info("Voice assistant activated");
+    toast.info(t('message.voice_assistant_activated'));
+  };
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError(t('message.geolocation_not_supported'));
+      toast.error(t('message.geolocation_not_supported'));
+      return;
+    }
+
+    setIsGettingLocation(true);
+    setLocationError("");
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          // Use reverse geocoding to get address
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          const data = await response.json();
+          
+          let locationString = "";
+          if (data.city) locationString += data.city;
+          if (data.principalSubdivision) locationString += `, ${data.principalSubdivision}`;
+          if (data.countryName) locationString += `, ${data.countryName}`;
+          
+          // Fallback if reverse geocoding fails
+          if (!locationString) {
+            locationString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          }
+          
+          setFormData(prev => ({ ...prev, location: locationString }));
+          setIsGettingLocation(false);
+          toast.success(t('message.location_detected'));
+        } catch (error) {
+          // Fallback to coordinates if reverse geocoding fails
+          const locationString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          setFormData(prev => ({ ...prev, location: locationString }));
+          setIsGettingLocation(false);
+          toast.success(t('message.location_coordinates'));
+        }
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        let errorMessage = t('message.location_unavailable');
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = t('message.location_denied');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = t('message.location_unavailable');
+            break;
+          case error.TIMEOUT:
+            errorMessage = t('message.location_timeout');
+            break;
+        }
+        
+        setLocationError(errorMessage);
+        toast.error(errorMessage);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes
+      }
+    );
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!qualityScore) {
-      toast.error("Please run quality check first");
+      toast.error(t('message.run_quality_check_first'));
       return;
     }
-    toast.success("Produce registered successfully on blockchain!");
+    toast.success(t('message.produce_registered'));
   };
 
   return (
@@ -98,9 +243,17 @@ export const FarmerDashboard = () => {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Leaf className="h-8 w-8 text-primary" />
-            Farmer Dashboard
+            {t('farmer.title')}
           </h1>
-          <p className="text-muted-foreground">Register your produce and get blockchain verification</p>
+          <p className="text-muted-foreground">{t('farmer.subtitle')}</p>
+          {formData.cropType && (formData.cropType.includes("Koraput") || formData.cropType.includes("Kandhamal") || formData.cropType.includes("Nayagarh") || formData.cropType.includes("Ganjam")) && (
+            <div className="mt-2">
+              <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                <Sparkles className="h-3 w-3" />
+                {t('farmer.gi_tagged')}
+              </Badge>
+            </div>
+          )}
         </div>
         
         <Button
@@ -109,7 +262,7 @@ export const FarmerDashboard = () => {
           className="flex items-center gap-2"
         >
           <Volume2 className="h-4 w-4" />
-          Voice Assistant
+          {t('farmer.voice_assistant')}
         </Button>
       </div>
 
@@ -119,7 +272,7 @@ export const FarmerDashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Produce Registration
+              {t('farmer.register_produce')}
             </CardTitle>
             <CardDescription>
               Enter details about your harvest for blockchain registration
@@ -130,35 +283,51 @@ export const FarmerDashboard = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="cropType">Crop Type</Label>
+                  <Label htmlFor="cropType">{t('farmer.crop_type')}</Label>
                   <Select value={formData.cropType} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, cropType: value }))
+                    setFormData(prev => ({ ...prev, cropType: value, variety: "" }))
                   }>
                     <SelectTrigger>
                       <SelectValue placeholder="Select crop" />
                     </SelectTrigger>
                     <SelectContent>
                       {cropTypes.map(crop => (
-                        <SelectItem key={crop} value={crop}>{crop}</SelectItem>
+                        <SelectItem key={crop} value={crop}>
+                          <div className="flex items-center gap-2">
+                            {crop.includes("Koraput") || crop.includes("Kandhamal") || crop.includes("Nayagarh") || crop.includes("Ganjam") ? (
+                              <Badge variant="secondary" className="text-xs">GI Tagged</Badge>
+                            ) : null}
+                            {crop}
+                          </div>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <div>
-                  <Label htmlFor="variety">Variety</Label>
-                  <Input
-                    id="variety"
-                    placeholder="e.g., Cherry, Roma"
-                    value={formData.variety}
-                    onChange={(e) => setFormData(prev => ({ ...prev, variety: e.target.value }))}
-                  />
+                  <Label htmlFor="variety">{t('farmer.variety')}</Label>
+                  <Select 
+                    value={formData.variety} 
+                    onValueChange={(value) => 
+                      setFormData(prev => ({ ...prev, variety: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select variety" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getCropVariants(formData.cropType).map(variant => (
+                        <SelectItem key={variant} value={variant}>{variant}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="quantity">Quantity</Label>
+                  <Label htmlFor="quantity">{t('farmer.quantity')}</Label>
                   <Input
                     id="quantity"
                     type="number"
@@ -169,7 +338,7 @@ export const FarmerDashboard = () => {
                 </div>
                 
                 <div>
-                  <Label htmlFor="unit">Unit</Label>
+                  <Label htmlFor="unit">{t('farmer.unit')}</Label>
                   <Select value={formData.unit} onValueChange={(value) => 
                     setFormData(prev => ({ ...prev, unit: value }))
                   }>
@@ -177,10 +346,12 @@ export const FarmerDashboard = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="kg">Kilograms</SelectItem>
-                      <SelectItem value="lbs">Pounds</SelectItem>
-                      <SelectItem value="tons">Tons</SelectItem>
-                      <SelectItem value="boxes">Boxes</SelectItem>
+                      <SelectItem value="kg">{t('unit.kg')}</SelectItem>
+                      <SelectItem value="quintal">{t('unit.quintal')}</SelectItem>
+                      <SelectItem value="ton">{t('unit.ton')}</SelectItem>
+                      <SelectItem value="piece">{t('unit.piece')}</SelectItem>
+                      <SelectItem value="bag">{t('unit.bag')}</SelectItem>
+                      <SelectItem value="liter">{t('unit.liter')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -189,20 +360,40 @@ export const FarmerDashboard = () => {
               <div>
                 <Label htmlFor="location" className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
-                  Farm Location
+                  {t('farmer.location')}
                 </Label>
-                <Input
-                  id="location"
-                  placeholder="Farm address or coordinates"
-                  value={formData.location}
-                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="location"
+                    placeholder="Farm address or coordinates"
+                    value={formData.location}
+                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={getCurrentLocation}
+                    disabled={isGettingLocation}
+                    className="flex items-center gap-2"
+                  >
+                    {isGettingLocation ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Navigation className="h-4 w-4" />
+                    )}
+                    {isGettingLocation ? t('farmer.getting_location') : t('farmer.get_location')}
+                  </Button>
+                </div>
+                {locationError && (
+                  <p className="text-sm text-red-500 mt-1">{locationError}</p>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="harvestDate" className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  Harvest Date
+                  {t('farmer.harvest_date')}
                 </Label>
                 <Input
                   id="harvestDate"
@@ -213,7 +404,7 @@ export const FarmerDashboard = () => {
               </div>
 
               <div>
-                <Label htmlFor="description">Additional Notes</Label>
+                <Label htmlFor="description">{t('farmer.description')}</Label>
                 <Textarea
                   id="description"
                   placeholder="Organic certification, special handling, etc."
@@ -224,7 +415,7 @@ export const FarmerDashboard = () => {
 
               {/* Image Upload */}
               <div>
-                <Label>Produce Images</Label>
+                <Label>{t('farmer.upload_images')}</Label>
                 <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
                   <input
                     type="file"
@@ -264,12 +455,12 @@ export const FarmerDashboard = () => {
                 {isProcessing ? (
                   <>
                     <Sparkles className="h-4 w-4 animate-spin" />
-                    Analyzing...
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4" />
-                    Run Quality Check
+                    {t('farmer.quality_check')}
                   </>
                 )}
               </Button>
@@ -280,7 +471,7 @@ export const FarmerDashboard = () => {
                 className="flex items-center gap-2"
               >
                 <Upload className="h-4 w-4" />
-                Register on Blockchain
+                {t('farmer.register_produce')}
               </Button>
             </CardFooter>
           </form>
