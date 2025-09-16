@@ -36,13 +36,19 @@ export const Navigation = ({ currentPage, onPageChange }: NavigationProps) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="bg-primary p-2 rounded-lg">
-              <Leaf className="h-6 w-6 text-primary-foreground" />
+          <div className="flex items-center space-x-3">
+            <div className="relative bg-gradient-to-br from-primary to-secondary p-2.5 rounded-xl shadow-lg animate-pulse-glow">
+              <Leaf className="h-7 w-7 text-primary-foreground" />
+              <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-xl opacity-20 animate-pulse"></div>
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              AgriTrace
-            </span>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold font-space bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
+                AgriTrace
+              </span>
+              <span className="text-xs text-muted-foreground font-medium tracking-wider">
+                FARM TO FORK
+              </span>
+            </div>
           </div>
 
           {/* Desktop Navigation */}
