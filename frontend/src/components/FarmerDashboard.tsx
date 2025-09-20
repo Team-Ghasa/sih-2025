@@ -371,488 +371,472 @@ export const FarmerDashboard = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="w-full p-4 space-y-4">
       {/* Price Prediction Result at the Top */}
       {pricePredictionResult && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Price Prediction Results
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <div>
-                <span className="font-medium">Crop:</span> {pricePredictionResult.crop_name}
-              </div>
-              <div>
-                <span className="font-medium">Market Price:</span> ₹{pricePredictionResult.market_price.price_per_kg}/kg
-              </div>
-              <div>
-                <span className="font-medium">Total Value:</span> ₹{pricePredictionResult.market_price.total_price}
-              </div>
-              <div>
-                <span className="font-medium">Farmer Revenue:</span> ₹{pricePredictionResult.pricing_tiers.farmer_to_distributor.total_price}
-              </div>
-              <div>
-                <span className="font-medium">Farmer Profit:</span> ₹{pricePredictionResult.pricing_tiers.farmer_to_distributor.profit}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="w-full mb-4 border rounded-lg p-4 bg-blue-50">
+          <div className="font-semibold flex items-center gap-2 mb-2">
+            <TrendingUp className="h-5 w-5" />
+            Price Prediction Results
+          </div>
+          <div className="space-y-1 text-sm">
+            <div><span className="font-medium">Crop:</span> {pricePredictionResult.crop_name}</div>
+            <div><span className="font-medium">Market Price:</span> ₹{pricePredictionResult.market_price.price_per_kg}/kg</div>
+            <div><span className="font-medium">Total Value:</span> ₹{pricePredictionResult.market_price.total_price}</div>
+            <div><span className="font-medium">Farmer Revenue:</span> ₹{pricePredictionResult.pricing_tiers.farmer_to_distributor.total_price}</div>
+            <div><span className="font-medium">Farmer Profit:</span> ₹{pricePredictionResult.pricing_tiers.farmer_to_distributor.profit}</div>
+          </div>
+        </div>
       )}
       {/* System Status */}
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="w-full flex flex-col md:flex-row gap-2">
         {/* Blockchain Connection Status */}
-        <Card className="border-2 border-primary/20 bg-primary/5">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                <div>
-                  <h3 className="font-semibold">
-                    {isConnected ? 'Blockchain Connected' : 'Blockchain Disconnected'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {isConnected ? `Wallet: ${account?.slice(0, 6)}...${account?.slice(-4)}` : 'Connect your wallet to register products on blockchain'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {!isConnected ? (
-                  <Button onClick={connectWallet} size="sm">
-                    Connect Wallet
-                  </Button>
-                ) : !isUserRegistered ? (
-                  <Button onClick={registerUserOnBlockchain} size="sm" disabled={web3Loading}>
-                    {web3Loading ? 'Registering...' : 'Register as Farmer'}
-                  </Button>
-                ) : (
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3" />
-                    Registered
-                  </Badge>
-                )}
+        <div className="flex-1 p-2 border rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <div>
+                <h3 className="font-semibold">
+                  {isConnected ? 'Blockchain Connected' : 'Blockchain Disconnected'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {isConnected ? `Wallet: ${account?.slice(0, 6)}...${account?.slice(-4)}` : 'Connect your wallet to register products on blockchain'}
+                </p>
               </div>
             </div>
-            {web3Error && (
-              <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
-                {web3Error}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* ML API Status */}
-        <Card className="border-2 border-blue-200 bg-blue-50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${
-                  apiAvailable === null ? 'bg-yellow-500' : 
-                  apiAvailable ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                }`}></div>
-                <div>
-                  <h3 className="font-semibold">
-                    {apiAvailable === null ? 'Checking ML API...' : 
-                     apiAvailable ? 'ML Prediction API Active' : 'ML API Unavailable'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {apiAvailable === null ? 'Verifying connection to prediction service' :
-                     apiAvailable ? 'Real-time crop quality analysis available' : 
-                     'Using fallback prediction mode'}
-                  </p>
-                </div>
-              </div>
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Sparkles className="h-3 w-3" />
-                {apiAvailable ? 'AI Active' : 'Fallback'}
-              </Badge>
+            <div className="flex gap-2">
+              {!isConnected ? (
+                <Button onClick={connectWallet} size="sm">
+                  Connect Wallet
+                </Button>
+              ) : !isUserRegistered ? (
+                <Button onClick={registerUserOnBlockchain} size="sm" disabled={web3Loading}>
+                  {web3Loading ? 'Registering...' : 'Register as Farmer'}
+                </Button>
+              ) : (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Registered
+                </Badge>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Leaf className="h-8 w-8 text-primary" />
-            {t('farmer.title')}
-          </h1>
-          <p className="text-muted-foreground">{t('farmer.subtitle')}</p>
-          {formData.cropType && (formData.cropType.includes("Koraput") || formData.cropType.includes("Kandhamal") || formData.cropType.includes("Nayagarh") || formData.cropType.includes("Ganjam")) && (
-            <div className="mt-2">
-              <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                <Sparkles className="h-3 w-3" />
-                {t('farmer.gi_tagged')}
-              </Badge>
+          </div>
+          {web3Error && (
+            <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
+              {web3Error}
             </div>
           )}
         </div>
-        
-        <Button
-          onClick={handleVoiceAssistant}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <Volume2 className="h-4 w-4" />
-          {t('farmer.voice_assistant')}
-        </Button>
+
+        {/* ML API Status */}
+        <div className="flex-1 p-2 border rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${
+                apiAvailable === null ? 'bg-yellow-500' : 
+                apiAvailable ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+              }`}></div>
+              <div>
+                <h3 className="font-semibold">
+                  {apiAvailable === null ? 'Checking ML API...' : 
+                   apiAvailable ? 'ML Prediction API Active' : 'ML API Unavailable'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {apiAvailable === null ? 'Verifying connection to prediction service' :
+                   apiAvailable ? 'Real-time crop quality analysis available' : 
+                   'Using fallback prediction mode'}
+                </p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              {apiAvailable ? 'AI Active' : 'Fallback'}
+            </Badge>
+          </div>
+        </div>
       </div>
 
-      {/* Price Prediction Section */}
-      {/* Remove any remaining Crop Price Prediction form UI and <PricePrediction /> component rendering. */}
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Registration Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              {t('farmer.register_produce')}
-            </CardTitle>
-            <CardDescription>
-              Enter details about your harvest for blockchain registration
-            </CardDescription>
-          </CardHeader>
+      <div className="w-full">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Leaf className="h-8 w-8 text-primary" />
+              {t('farmer.title')}
+            </h1>
+            <p className="text-muted-foreground">{t('farmer.subtitle')}</p>
+            {formData.cropType && (formData.cropType.includes("Koraput") || formData.cropType.includes("Kandhamal") || formData.cropType.includes("Nayagarh") || formData.cropType.includes("Ganjam")) && (
+              <div className="mt-2">
+                <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                  <Sparkles className="h-3 w-3" />
+                  {t('farmer.gi_tagged')}
+                </Badge>
+              </div>
+            )}
+          </div>
           
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="cropType">{t('farmer.crop_type')}</Label>
-                  <Select value={formData.cropType} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, cropType: value, variety: "" }))
-                  }>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select crop" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cropTypes.map(crop => (
-                        <SelectItem key={crop} value={crop}>
-                          <div className="flex items-center gap-2">
-                            {crop.includes("Koraput") || crop.includes("Kandhamal") || crop.includes("Nayagarh") || crop.includes("Ganjam") ? (
-                              <Badge variant="secondary" className="text-xs">GI Tagged</Badge>
-                            ) : null}
-                            {crop}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <Label htmlFor="variety">{t('farmer.variety')}</Label>
-                  <Select 
-                    value={formData.variety} 
-                    onValueChange={(value) => 
-                      setFormData(prev => ({ ...prev, variety: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select variety" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getCropVariants(formData.cropType).map(variant => (
-                        <SelectItem key={variant} value={variant}>{variant}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+          <Button
+            onClick={handleVoiceAssistant}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Volume2 className="h-4 w-4" />
+            {t('farmer.voice_assistant')}
+          </Button>
+        </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="quantity">{t('farmer.quantity')}</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    placeholder="100"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="unit">{t('farmer.unit')}</Label>
-                  <Select value={formData.unit} onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, unit: value }))
-                  }>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="kg">{t('unit.kg')}</SelectItem>
-                      <SelectItem value="quintal">{t('unit.quintal')}</SelectItem>
-                      <SelectItem value="ton">{t('unit.ton')}</SelectItem>
-                      <SelectItem value="piece">{t('unit.piece')}</SelectItem>
-                      <SelectItem value="bag">{t('unit.bag')}</SelectItem>
-                      <SelectItem value="liter">{t('unit.liter')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+        {/* Price Prediction Section */}
+        {/* Remove any remaining Crop Price Prediction form UI and <PricePrediction /> component rendering. */}
 
-              <div>
-                <Label htmlFor="location" className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  {t('farmer.location')}
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="location"
-                    placeholder="Farm address or coordinates"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={getCurrentLocation}
-                    disabled={isGettingLocation}
-                    className="flex items-center gap-2"
-                  >
-                    {isGettingLocation ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Navigation className="h-4 w-4" />
-                    )}
-                    {isGettingLocation ? t('farmer.getting_location') : t('farmer.get_location')}
-                  </Button>
-                </div>
-                {locationError && (
-                  <p className="text-sm text-red-500 mt-1">{locationError}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="harvestDate" className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  {t('farmer.harvest_date')}
-                </Label>
-                <Input
-                  id="harvestDate"
-                  type="date"
-                  value={formData.harvestDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, harvestDate: e.target.value }))}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="description">{t('farmer.description')}</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Organic certification, special handling, etc."
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
-
-              {/* Image Upload */}
-              <div>
-                <Label>{t('farmer.upload_images')}</Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label htmlFor="image-upload" className="cursor-pointer">
-                    <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Click to upload images or drag and drop
-                    </p>
-                  </label>
-                </div>
-                
-                {images.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {images.map((image, index) => (
-                      <Badge key={index} variant="secondary">
-                        {image.name}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
+        <div className="w-full space-y-4">
+          {/* Registration Form */}
+          <div className="w-full border rounded-lg p-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                {t('farmer.register_produce')}
+              </CardTitle>
+              <CardDescription>
+                Enter details about your harvest for blockchain registration
+              </CardDescription>
+            </CardHeader>
             
-            <CardFooter className="flex gap-2">
-              <Button
-                type="button"
-                onClick={runQualityCheck}
-                disabled={isProcessing || images.length === 0}
-                className="flex items-center gap-2"
-              >
-                {isProcessing ? (
-                  <>
-                    <Sparkles className="h-4 w-4 animate-spin" />
-                    {t('common.loading')}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    {t('farmer.quality_check')}
-                  </>
-                )}
-              </Button>
-              <Button
-                type="button"
-                onClick={async () => {
-                  // Predict price using formData
-                  if (!formData.cropType || !formData.quantity || !formData.location) {
-                    toast.error('Please fill crop type, quantity, and location for price prediction');
-                    return;
-                  }
-                  try {
-                    const result = await pricePredictionApi.predictPrice({
-                      crop_name: formData.cropType,
-                      quantity_kg: parseFloat(formData.quantity),
-                      location: formData.location,
-                    });
-                    setPricePredictionResult(result);
-                    toast.success(`Price prediction completed! Market price: ₹${result.market_price.price_per_kg}/kg`);
-                  } catch (error: any) {
-                    toast.error(`Price prediction failed: ${error.message}`);
-                  }
-                }}
-                disabled={!formData.cropType || !formData.quantity || !formData.location}
-                className="flex items-center gap-2"
-              >
-                <TrendingUp className="h-4 w-4" />
-                Predict
-              </Button>
-              <Button
-                type="submit"
-                disabled={!qualityScore || !isConnected || !isUserRegistered || web3Loading}
-                className="flex items-center gap-2"
-              >
-                {web3Loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Registering on Blockchain...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    {isConnected && isUserRegistered ? 'Register on Blockchain' : 'Connect Wallet First'}
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
-
-        {/* Results Panel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Quality & Verification
-            </CardTitle>
-            <CardDescription>
-              AI analysis results and blockchain verification
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent className="space-y-6">
-            {qualityScore ? (
-              <>
-                {/* Quality Score */}
-                <div className="text-center p-6 bg-success/10 rounded-lg border border-success/20">
-                  <div className="text-4xl font-bold text-success mb-2">{qualityScore}%</div>
-                  <p className="text-sm font-medium">Quality Score</p>
-                  <div className="flex flex-col gap-2 mt-3">
-                    <Badge variant="secondary" className="bg-success/20 text-success">
-                      {predictionResult ? 
-                        (predictionResult.predicted_quality === 'good' ? 'Good Quality' : 'Poor Quality') : 
-                        'Premium Grade'
+            <form onSubmit={handleSubmit}>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="cropType">{t('farmer.crop_type')}</Label>
+                    <Select value={formData.cropType} onValueChange={(value) => 
+                      setFormData(prev => ({ ...prev, cropType: value, variety: "" }))
+                    }>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select crop" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cropTypes.map(crop => (
+                          <SelectItem key={crop} value={crop}>
+                            <div className="flex items-center gap-2">
+                              {crop.includes("Koraput") || crop.includes("Kandhamal") || crop.includes("Nayagarh") || crop.includes("Ganjam") ? (
+                                <Badge variant="secondary" className="text-xs">GI Tagged</Badge>
+                              ) : null}
+                              {crop}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="variety">{t('farmer.variety')}</Label>
+                    <Select 
+                      value={formData.variety} 
+                      onValueChange={(value) => 
+                        setFormData(prev => ({ ...prev, variety: value }))
                       }
-                    </Badge>
-                    {predictionResult && (
-                      <div className="text-xs text-muted-foreground">
-                        <div>Confidence: {Math.round(predictionResult.prediction_confidence * 100)}%</div>
-                        <div>ML Model: {apiAvailable ? 'Active' : 'Fallback'}</div>
-                      </div>
-                    )}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select variety" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getCropVariants(formData.cropType).map(variant => (
+                          <SelectItem key={variant} value={variant}>{variant}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                {/* Blockchain Information */}
-                {productId && (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                      <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4" />
-                        Blockchain Registered
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="font-medium">Product ID:</span> {productId}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="quantity">{t('farmer.quantity')}</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      placeholder="100"
+                      value={formData.quantity}
+                      onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="unit">{t('farmer.unit')}</Label>
+                    <Select value={formData.unit} onValueChange={(value) => 
+                      setFormData(prev => ({ ...prev, unit: value }))
+                    }>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="kg">{t('unit.kg')}</SelectItem>
+                        <SelectItem value="quintal">{t('unit.quintal')}</SelectItem>
+                        <SelectItem value="ton">{t('unit.ton')}</SelectItem>
+                        <SelectItem value="piece">{t('unit.piece')}</SelectItem>
+                        <SelectItem value="bag">{t('unit.bag')}</SelectItem>
+                        <SelectItem value="liter">{t('unit.liter')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="location" className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {t('farmer.location')}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="location"
+                      placeholder="Farm address or coordinates"
+                      value={formData.location}
+                      onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={getCurrentLocation}
+                      disabled={isGettingLocation}
+                      className="flex items-center gap-2"
+                    >
+                      {isGettingLocation ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Navigation className="h-4 w-4" />
+                      )}
+                      {isGettingLocation ? t('farmer.getting_location') : t('farmer.get_location')}
+                    </Button>
+                  </div>
+                  {locationError && (
+                    <p className="text-sm text-red-500 mt-1">{locationError}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="harvestDate" className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {t('farmer.harvest_date')}
+                  </Label>
+                  <Input
+                    id="harvestDate"
+                    type="date"
+                    value={formData.harvestDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, harvestDate: e.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="description">{t('farmer.description')}</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Organic certification, special handling, etc."
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  />
+                </div>
+
+                {/* Image Upload */}
+                <div>
+                  <Label>{t('farmer.upload_images')}</Label>
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label htmlFor="image-upload" className="cursor-pointer">
+                      <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload images or drag and drop
+                      </p>
+                    </label>
+                  </div>
+                  
+                  {images.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {images.map((image, index) => (
+                        <Badge key={index} variant="secondary">
+                          {image.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              
+              <CardFooter className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={runQualityCheck}
+                  disabled={isProcessing || images.length === 0}
+                  className="flex items-center gap-2"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Sparkles className="h-4 w-4 animate-spin" />
+                      {t('common.loading')}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      {t('farmer.quality_check')}
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    // Predict price using formData
+                    if (!formData.cropType || !formData.quantity || !formData.location) {
+                      toast.error('Please fill crop type, quantity, and location for price prediction');
+                      return;
+                    }
+                    try {
+                      const result = await pricePredictionApi.predictPrice({
+                        crop_name: formData.cropType,
+                        quantity_kg: parseFloat(formData.quantity),
+                        location: formData.location,
+                      });
+                      setPricePredictionResult(result);
+                      toast.success(`Price prediction completed! Market price: ₹${result.market_price.price_per_kg}/kg`);
+                    } catch (error: any) {
+                      toast.error(`Price prediction failed: ${error.message}`);
+                    }
+                  }}
+                  disabled={!formData.cropType || !formData.quantity || !formData.location}
+                  className="flex items-center gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Predict
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!qualityScore || !isConnected || !isUserRegistered || web3Loading}
+                  className="flex items-center gap-2"
+                >
+                  {web3Loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Registering on Blockchain...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      {isConnected && isUserRegistered ? 'Register on Blockchain' : 'Connect Wallet First'}
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          </div>
+
+          {/* Results Panel */}
+          <div className="w-full border rounded-lg p-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                Quality & Verification
+              </CardTitle>
+              <CardDescription>
+                AI analysis results and blockchain verification
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              {qualityScore ? (
+                <>
+                  {/* Quality Score */}
+                  <div className="text-center p-6 bg-success/10 rounded-lg border border-success/20">
+                    <div className="text-4xl font-bold text-success mb-2">{qualityScore}%</div>
+                    <p className="text-sm font-medium">Quality Score</p>
+                    <div className="flex flex-col gap-2 mt-3">
+                      <Badge variant="secondary" className="bg-success/20 text-success">
+                        {predictionResult ? 
+                          (predictionResult.predicted_quality === 'good' ? 'Good Quality' : 'Poor Quality') : 
+                          'Premium Grade'
+                        }
+                      </Badge>
+                      {predictionResult && (
+                        <div className="text-xs text-muted-foreground">
+                          <div>Confidence: {Math.round(predictionResult.prediction_confidence * 100)}%</div>
+                          <div>ML Model: {apiAvailable ? 'Active' : 'Fallback'}</div>
                         </div>
-                        <div>
-                          <span className="font-medium">Blockchain Hash:</span>
-                          <div className="p-2 bg-muted rounded font-mono text-xs break-all mt-1">
-                            {blockchainHash}
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Blockchain Information */}
+                  {productId && (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                        <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Blockchain Registered
+                        </h4>
+                        <div className="space-y-2 text-sm">
+                          <div>
+                            <span className="font-medium">Product ID:</span> {productId}
                           </div>
-                        </div>
-                        <div>
-                          <span className="font-medium">Status:</span> 
-                          <Badge variant="secondary" className="ml-2">Immutable Record</Badge>
+                          <div>
+                            <span className="font-medium">Blockchain Hash:</span>
+                            <div className="p-2 bg-muted rounded font-mono text-xs break-all mt-1">
+                              {blockchainHash}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="font-medium">Status:</span> 
+                            <Badge variant="secondary" className="ml-2">Immutable Record</Badge>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* QR Code Generator */}
-                {productId && (
-                  <div className="text-center">
-                    <Label className="flex items-center gap-1 justify-center mb-3">
-                      <QrCode className="h-4 w-4" />
-                      QR Code for Tracking
-                    </Label>
-                    <QRCodeGenerator
-                      productId={productId}
-                      productData={{
-                        cropType: formData.cropType,
-                        variety: formData.variety,
-                        farmerName: "John Farmer", // You can make this dynamic
-                        farmerLocation: formData.location,
-                        harvestDate: formData.harvestDate,
-                        qualityScore: qualityScore,
-                        description: formData.description,
-                        blockchainHash: blockchainHash
-                      }}
-                      onGenerated={(qrString) => {
-                        console.log('QR Code generated:', qrString);
-                        toast.success('QR code generated successfully!');
-                      }}
-                    />
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Upload images and run quality check to see results
-                </p>
-                {!isConnected && (
-                  <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-yellow-700 text-sm">
-                    Connect your wallet to register products on blockchain
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  {/* QR Code Generator */}
+                  {productId && (
+                    <div className="text-center">
+                      <Label className="flex items-center gap-1 justify-center mb-3">
+                        <QrCode className="h-4 w-4" />
+                        QR Code for Tracking
+                      </Label>
+                      <QRCodeGenerator
+                        productId={productId}
+                        productData={{
+                          cropType: formData.cropType,
+                          variety: formData.variety,
+                          farmerName: "John Farmer", // You can make this dynamic
+                          farmerLocation: formData.location,
+                          harvestDate: formData.harvestDate,
+                          qualityScore: qualityScore,
+                          description: formData.description,
+                          blockchainHash: blockchainHash
+                        }}
+                        onGenerated={(qrString) => {
+                          console.log('QR Code generated:', qrString);
+                          toast.success('QR code generated successfully!');
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">
+                    Upload images and run quality check to see results
+                  </p>
+                  {!isConnected && (
+                    <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-yellow-700 text-sm">
+                      Connect your wallet to register products on blockchain
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </div>
+        </div>
       </div>
     </div>
   );
