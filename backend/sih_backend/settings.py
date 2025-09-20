@@ -34,7 +34,7 @@ SECRET_KEY = get_env_setting('DJANGO_SECRET_KEY', 'django-insecure-f11wn5l^4pwj6
 DEBUG = get_env_setting('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
 # ALLOWED_HOSTS should be set in production
-raw_allowed = get_env_setting('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0')
+raw_allowed = get_env_setting('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,sih-2025-0eza.onrender.com')
 ALLOWED_HOSTS = [h.strip() for h in raw_allowed.split(',') if h.strip()]
 
 # Optionally trust forwarded host/proto headers when running behind a proxy
