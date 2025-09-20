@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth, User as AuthUser } from "@/contexts/AuthContext";
 import { useTranslation } from "@/contexts/TranslationContext";
+import { useWeb3 } from "@/contexts/Web3Context";
 import { GoogleTranslate, GoogleTranslateStyles } from "./GoogleTranslate";
 import { SimpleGoogleTranslate } from "./SimpleGoogleTranslate";
 
@@ -28,6 +29,7 @@ export const Navigation = ({ currentPage, onPageChange, user }: NavigationProps)
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { logout } = useAuth();
   const { language, setLanguage, t } = useTranslation();
+  const { isConnected, account, connectWallet, disconnectWallet } = useWeb3();
 
   const navItems = [
     { id: "home", label: t('nav.home'), icon: Leaf },
@@ -86,6 +88,35 @@ export const Navigation = ({ currentPage, onPageChange, user }: NavigationProps)
 
           {/* User Profile & Language Selector & Mobile Menu */}
           <div className="flex items-center space-x-1 sm:space-x-2">
+            {/* Web3 Connection */}
+            <div className="flex items-center space-x-1">
+              {isConnected ? (
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">
+                    {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : 'Connected'}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={disconnectWallet}
+                    className="text-xs px-2 py-1"
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={connectWallet}
+                  className="text-xs px-2 py-1"
+                >
+                  Connect Wallet
+                </Button>
+              )}
+            </div>
+
             {/* User Profile */}
             {user ? (
               <div className="flex items-center space-x-1 sm:space-x-2">

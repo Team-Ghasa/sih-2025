@@ -12,6 +12,7 @@ import { RetailerDashboard } from "./components/RetailerDashboard";
 import { LoginForm } from "./components/LoginForm";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TranslationProvider } from "./contexts/TranslationContext";
+import { Web3Provider } from "./contexts/Web3Context";
 import { GoogleTranslate, GoogleTranslateStyles } from "./components/GoogleTranslate";
 import { SimpleGoogleTranslate } from "./components/SimpleGoogleTranslate";
 
@@ -62,13 +63,15 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TranslationProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <AppContent />
-          </TooltipProvider>
-        </AuthProvider>
+        <Web3Provider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <AppContent />
+            </TooltipProvider>
+          </AuthProvider>
+        </Web3Provider>
       </TranslationProvider>
     </QueryClientProvider>
   );

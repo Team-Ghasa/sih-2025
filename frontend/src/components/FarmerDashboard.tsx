@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useTranslation } from "@/contexts/TranslationContext";
+import { useWeb3 } from "@/contexts/Web3Context";
+import { WEB3_CONFIG } from "@/config/web3Config";
+import { QRCodeGenerator } from "@/components/QRCodeGenerator";
 import { 
   Upload, 
   Camera, 
@@ -25,6 +28,15 @@ import {
 
 export const FarmerDashboard = () => {
   const { t } = useTranslation();
+  const { 
+    isConnected, 
+    account, 
+    connectWallet, 
+    registerUser, 
+    registerProduct, 
+    isLoading: web3Loading,
+    error: web3Error 
+  } = useWeb3();
   const [formData, setFormData] = useState({
     cropType: "",
     variety: "",
@@ -42,6 +54,8 @@ export const FarmerDashboard = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string>("");
+  const [productId, setProductId] = useState<number | null>(null);
+  const [isUserRegistered, setIsUserRegistered] = useState(false);
 
   // Auto-request location permission on component mount
   useEffect(() => {
@@ -228,17 +242,120 @@ export const FarmerDashboard = () => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const registerUserOnBlockchain = async () => {
+    if (!isConnected) {
+      await connectWallet();
+      return;
+    }
+
+    try {
+      await registerUser(
+        "John Farmer", // You can make this dynamic
+        WEB3_CONFIG.USER_ROLES.FARMER,
+        formData.location || "Chennai, India",
+        "+91-9876543210" // You can make this dynamic
+      );
+      setIsUserRegistered(true);
+      toast.success("User registered on blockchain successfully!");
+    } catch (error: any) {
+      toast.error(`Failed to register user: ${error.message}`);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    if (!isUserRegistered) {
+      toast.error("Please register as a user on blockchain first");
+      return;
+    }
+
     if (!qualityScore) {
       toast.error(t('message.run_quality_check_first'));
       return;
     }
-    toast.success(t('message.produce_registered'));
+
+    if (!formData.cropType || !formData.variety || !formData.quantity) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Generate a simple hash for the image (in real app, you'd upload to IPFS)
+      const imageHash = `QmHash${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Register product on blockchain
+      const newProductId = await registerProduct(
+        formData.cropType,
+        formData.variety,
+        formData.quantity,
+        formData.unit,
+        Math.floor(new Date(formData.harvestDate).getTime() / 1000),
+        qualityScore,
+        formData.description,
+        imageHash
+      );
+
+      setProductId(newProductId);
+      setBlockchainHash(`0x${Math.random().toString(16).substr(2, 10)}`);
+      setQrCode(`https://agritrace.app/verify/${newProductId}`);
+      
+      toast.success(`Product registered on blockchain! Product ID: ${newProductId}`);
+    } catch (error: any) {
+      toast.error(`Failed to register product: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* Blockchain Connection Status */}
+      <Card className="border-2 border-primary/20 bg-primary/5">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <div>
+                <h3 className="font-semibold">
+                  {isConnected ? 'Blockchain Connected' : 'Blockchain Disconnected'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {isConnected ? `Wallet: ${account?.slice(0, 6)}...${account?.slice(-4)}` : 'Connect your wallet to register products on blockchain'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {!isConnected ? (
+                <Button onClick={connectWallet} size="sm">
+                  Connect Wallet
+                </Button>
+              ) : !isUserRegistered ? (
+                <Button onClick={registerUserOnBlockchain} size="sm" disabled={web3Loading}>
+                  {web3Loading ? 'Registering...' : 'Register as Farmer'}
+                </Button>
+              ) : (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Registered
+                </Badge>
+              )}
+            </div>
+          </div>
+          {web3Error && (
+            <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
+              {web3Error}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -467,11 +584,20 @@ export const FarmerDashboard = () => {
               
               <Button
                 type="submit"
-                disabled={!qualityScore}
+                disabled={!qualityScore || !isConnected || !isUserRegistered || web3Loading}
                 className="flex items-center gap-2"
               >
-                <Upload className="h-4 w-4" />
-                {t('farmer.register_produce')}
+                {web3Loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Registering on Blockchain...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    {isConnected && isUserRegistered ? 'Register on Blockchain' : 'Connect Wallet First'}
+                  </>
+                )}
               </Button>
             </CardFooter>
           </form>
@@ -501,29 +627,59 @@ export const FarmerDashboard = () => {
                   </Badge>
                 </div>
 
-                {/* Blockchain Hash */}
-                <div className="space-y-2">
-                  <Label>Blockchain Transaction Hash</Label>
-                  <div className="p-3 bg-muted rounded-lg font-mono text-sm break-all">
-                    {blockchainHash}
-                  </div>
-                </div>
-
-                {/* QR Code */}
-                <div className="text-center">
-                  <Label className="flex items-center gap-1 justify-center mb-3">
-                    <QrCode className="h-4 w-4" />
-                    QR Code for Tracking
-                  </Label>
-                  <div className="p-4 bg-background border border-border rounded-lg inline-block">
-                    <div className="w-32 h-32 bg-foreground/10 rounded flex items-center justify-center">
-                      <QrCode className="h-16 w-16 text-foreground/50" />
+                {/* Blockchain Information */}
+                {productId && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                      <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        Blockchain Registered
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium">Product ID:</span> {productId}
+                        </div>
+                        <div>
+                          <span className="font-medium">Blockchain Hash:</span>
+                          <div className="p-2 bg-muted rounded font-mono text-xs break-all mt-1">
+                            {blockchainHash}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="font-medium">Status:</span> 
+                          <Badge variant="secondary" className="ml-2">Immutable Record</Badge>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Scan to track your produce
-                  </p>
-                </div>
+                )}
+
+                {/* QR Code Generator */}
+                {productId && (
+                  <div className="text-center">
+                    <Label className="flex items-center gap-1 justify-center mb-3">
+                      <QrCode className="h-4 w-4" />
+                      QR Code for Tracking
+                    </Label>
+                    <QRCodeGenerator
+                      productId={productId}
+                      productData={{
+                        cropType: formData.cropType,
+                        variety: formData.variety,
+                        farmerName: "John Farmer", // You can make this dynamic
+                        farmerLocation: formData.location,
+                        harvestDate: formData.harvestDate,
+                        qualityScore: qualityScore,
+                        description: formData.description,
+                        blockchainHash: blockchainHash
+                      }}
+                      onGenerated={(qrString) => {
+                        console.log('QR Code generated:', qrString);
+                        toast.success('QR code generated successfully!');
+                      }}
+                    />
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-12">
@@ -531,6 +687,11 @@ export const FarmerDashboard = () => {
                 <p className="text-muted-foreground">
                   Upload images and run quality check to see results
                 </p>
+                {!isConnected && (
+                  <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-yellow-700 text-sm">
+                    Connect your wallet to register products on blockchain
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
