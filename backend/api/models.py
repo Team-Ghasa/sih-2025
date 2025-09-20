@@ -103,3 +103,55 @@ class CropQualityPrediction(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.predicted_quality} ({self.quality_score:.2f})"
+        return f"{self.transaction_type} - {self.supply_chain_item.product.name}"
+
+
+class CropQualityPrediction(models.Model):
+    """Model for storing crop quality predictions"""
+    QUALITY_CHOICES = [
+        ('good', 'Good'),
+        ('bad', 'Bad'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='crop_predictions')
+    image = models.ImageField(
+        upload_to='crop_images/',
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])],
+        help_text='Upload an image of the crop for quality prediction'
+    )
+    predicted_quality = models.CharField(max_length=10, choices=QUALITY_CHOICES)
+    quality_score = models.FloatField(help_text='Quality score from 0 to 1')
+    prediction_confidence = models.FloatField(help_text='Model confidence in prediction')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.predicted_quality} ({self.quality_score:.2f})"
+        return f"{self.transaction_type} - {self.supply_chain_item.product.name}"
+
+
+class CropQualityPrediction(models.Model):
+    """Model for storing crop quality predictions"""
+    QUALITY_CHOICES = [
+        ('good', 'Good'),
+        ('bad', 'Bad'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='crop_predictions')
+    image = models.ImageField(
+        upload_to='crop_images/',
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])],
+        help_text='Upload an image of the crop for quality prediction'
+    )
+    predicted_quality = models.CharField(max_length=10, choices=QUALITY_CHOICES)
+    quality_score = models.FloatField(help_text='Quality score from 0 to 1')
+    prediction_confidence = models.FloatField(help_text='Model confidence in prediction')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.predicted_quality} ({self.quality_score:.2f})"

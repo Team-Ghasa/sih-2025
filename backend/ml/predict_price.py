@@ -6,8 +6,8 @@ from typing import Dict, Any, Optional, Tuple
 
 # Prefer requests but provide a lightweight fallback using urllib if
 # the package is not installed in the environment (some deploys/builds
-# may temporarily miss the dependency). Code should call `http_get`
-# below instead of `requests.get` directly.
+# may temporarily miss the dependency). Code should call http_get
+# below instead of requests.get directly.
 try:
 	import requests  # type: ignore
 	_HAS_REQUESTS = True
@@ -20,7 +20,7 @@ import urllib.parse
 
 
 class _SimpleResponse:
-	def __init__(self, status: int, content: bytes):
+	def _init_(self, status: int, content: bytes):
 		self.status_code = status
 		self._content = content
 
@@ -35,7 +35,7 @@ class _SimpleResponse:
 def http_get(url: str, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, timeout: int = 15):
 	"""Perform an HTTP GET using requests if available, otherwise urllib.
 
-	Returns an object with `.status_code`, `.raise_for_status()` and `.json()`.
+	Returns an object with .status_code, .raise_for_status() and .json().
 	"""
 	if _HAS_REQUESTS and requests is not None:
 		return requests.get(url, params=params, headers=headers or {}, timeout=timeout)
@@ -63,8 +63,21 @@ NOT call any generative-AI or LLM services (Gemini, OpenAI, Anthropic, etc.).
 All estimates are derived from the local CSV dataset and public weather/
 geocoding APIs (Open-Meteo and Nominatim).
 """
-# Use CSV/historical lookup estimator name
+# Use CSV/historical lookup estimator name by default. If an XGBoost model is
+# available under ml/model/price_xgb.json we'll use it and change the name.
 ESTIMATOR_NAME: str = "local-csv-estimator"
+
+# XGBoost model path (optional)
+MODEL_DIR = os.path.join(os.path.dirname(_file_), 'model')
+XGB_MODEL_PATH = os.path.normpath(os.path.join(MODEL_DIR, 'price_xgb.json'))
+ENCODERS_PATH = os.path.normpath(os.path.join(MODEL_DIR, 'encoders.json'))
+
+_HAS_XGBOOST = False
+try:
+	import xgboost as xgb  # type: ignore
+	_HAS_XGBOOST = True
+except Exception:
+	xgb = None  # type: ignore
 
 OPEN_METEO_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 OPEN_METEO_WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
@@ -213,6 +226,79 @@ def empty_weather_snapshot() -> WeatherSnapshot:
 	)
 
 
+def _load_xgb_model_if_available():
+	"""Attempt to load an XGBoost model and encoders from disk. Returns (booster, encoders) or (None, None)."""
+	if not _HAS_XGBOOST:
+		return None, None
+	if not os.path.exists(XGB_MODEL_PATH):
+		return None, None
+	try:
+		booster = xgb.Booster()
+		booster.load_model(XGB_MODEL_PATH)
+		enc = None
+		if os.path.exists(ENCODERS_PATH):
+			try:
+				with open(ENCODERS_PATH, 'r', encoding='utf-8') as f:
+					enc = json.load(f)
+			except Exception:
+				enc = None
+		return booster, enc
+	except Exception:
+		return None, None
+
+
+def predict_with_model(crop_name: str, kilograms: float, trend: Dict[str, Any], weather: WeatherSnapshot) -> Optional[Dict[str, Any]]:
+	"""Predict using a saved XGBoost model if available. Returns same structure as estimate_price_from_csv on success, or None if model not usable."""
+	booster, enc = _load_xgb_model_if_available()
+	if not booster:
+		return None
+
+	# Build features in the same order used during train_xgb.py
+	try:
+		crop_classes = enc.get('crop_classes') if enc else []
+		state_classes = enc.get('state_classes') if enc else []
+		crop_enc = 0
+		state_enc = 0
+		# Find closest matching crop class index
+		c_lower = (crop_name or '').strip()
+		if crop_classes and c_lower:
+			for i, val in enumerate(crop_classes):
+				if str(val).lower() in c_lower.lower() or c_lower.lower() in str(val).lower():
+					crop_enc = i
+					break
+		# state unknown in API usage - keep 0
+		state_enc = 0
+
+		median_all = float(trend.get('perkg_median_all') or 0.0)
+		median_12m = float(trend.get('perkg_median_12m') or 0.0)
+		p25 = float(trend.get('perkg_p25_all') or 0.0)
+		p75 = float(trend.get('perkg_p75_all') or 0.0)
+		unit_scale = float(trend.get('unit_scale') or 1.0)
+
+		import numpy as _np
+		data = _np.array([[crop_enc, state_enc, median_all, median_12m, p25, p75, unit_scale]])
+		dmat = xgb.DMatrix(data)
+		pred = booster.predict(dmat)
+		price_per_kg = float(pred[0]) if getattr(pred, '_len_', lambda: 1)() > 0 else float(pred)
+		price_per_kg = round(max(0.0, price_per_kg), 2)
+		total_price = round(price_per_kg * float(kilograms), 2)
+
+		# Update model name to show model used
+		return {
+			'crop_name': crop_name,
+			'quantity_kg': float(kilograms),
+			'price_per_kg': price_per_kg,
+			'currency': 'INR',
+			'total_price': total_price,
+			'weather_summary': weather.description if weather.description else None,
+			'location': None,
+			'model': 'xgboost-estimator',
+			'assumptions': 'Predicted by XGBoost model trained on CSV-derived features.'
+		}
+	except Exception:
+		return None
+
+
 def load_dataset(csv_path: str = DATASET_CSV_PATH) -> pd.DataFrame:
 	# Avoid DtypeWarning by disabling low_memory and reading strings safely
 	dtype_map = {"commodity_name": "string", "state": "string", "district": "string", "market": "string", "date": "string"}
@@ -359,6 +445,16 @@ def estimate_price_from_csv(crop_name: str, kilograms: float, location_label: st
 	}
 
 
+def estimate_price(crop_name: str, kilograms: float, location_label: str, weather: WeatherSnapshot, trend: Dict[str, Any]) -> Dict[str, Any]:
+	"""High-level estimator: try XGBoost model if available, otherwise fall back to CSV estimator."""
+	# Try model-based prediction first
+	model_pred = predict_with_model(crop_name, kilograms, trend, weather)
+	if model_pred:
+		return model_pred
+	# fallback to csv rule-based
+	return estimate_price_from_csv(crop_name, kilograms, location_label, weather, trend)
+
+
 def get_validated_input() -> Tuple[str, float, str]:
 	while True:
 		crop = input("Enter crop name: ").strip()
@@ -455,7 +551,7 @@ def print_human_readable(estimate: Dict[str, Any], trend: Dict[str, Any], profit
             print(f"  • {note}")
     if trend.get("warn_unrealistic"):
         print("")
-        print("⚠️  Warning: Dataset contains values below ₹1/kg or above ₹1000/kg. Interpret with care.")
+        print("⚠  Warning: Dataset contains values below ₹1/kg or above ₹1000/kg. Interpret with care.")
     reason = estimate.get("assumptions")
     if reason:
         print("")
@@ -485,5 +581,5 @@ def main() -> None:
 	print_human_readable(estimate, trend, profit_margin, distributor_markup, retailer_markup)
 
 
-if __name__ == "__main__":
+if _name_ == "_main_":
 	main()

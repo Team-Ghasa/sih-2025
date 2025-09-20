@@ -29,30 +29,27 @@ export interface PredictionError {
 
 class CropPredictionApi {
   private async getAuthHeaders(): Promise<HeadersInit> {
-    // For now, we'll use a simple approach
-    // In a real app, you'd get the token from your auth context
     const token = localStorage.getItem('auth_token');
-    
+
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-    
+
     if (token) {
       headers['Authorization'] = `Token ${token}`;
     }
-    
+
     return headers;
   }
 
   private async getFormDataHeaders(): Promise<HeadersInit> {
     const token = localStorage.getItem('auth_token');
-    
     const headers: HeadersInit = {};
-    
+
     if (token) {
       headers['Authorization'] = `Token ${token}`;
     }
-    
+
     return headers;
   }
 
@@ -62,9 +59,9 @@ class CropPredictionApi {
   async predictCropQuality(imageFile: File): Promise<CropPredictionResult> {
     const formData = new FormData();
     formData.append('image', imageFile);
-    
+
     const headers = await this.getFormDataHeaders();
-    
+
     const response = await fetch(`${API_BASE_URL}/predict-crop/`, {
       method: 'POST',
       body: formData,
@@ -84,7 +81,7 @@ class CropPredictionApi {
    */
   async getUserPredictions(): Promise<CropPredictionResult[]> {
     const headers = await this.getAuthHeaders();
-    
+
     const response = await fetch(`${API_BASE_URL}/my-predictions/`, {
       method: 'GET',
       headers,
@@ -103,7 +100,7 @@ class CropPredictionApi {
    */
   async getPredictionById(id: number): Promise<CropPredictionResult> {
     const headers = await this.getAuthHeaders();
-    
+
     const response = await fetch(`${API_BASE_URL}/crop-prediction/${id}/`, {
       method: 'GET',
       headers,

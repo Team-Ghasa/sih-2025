@@ -9,11 +9,23 @@ router.register(r'crop-prediction', views.CropQualityPredictionViewSet, basename
 urlpatterns = [
     path('health/', views.health_check, name='health_check'),
     path('info/', views.api_info, name='api_info'),
-<<<<<<< HEAD
     path('predict-crop/', views.predict_crop_quality, name='predict_crop_quality'),
     path('my-predictions/', views.get_user_predictions, name='get_user_predictions'),
     path('', include(router.urls)),
-=======
-    path('predict/', views.predict_price, name='predict_price'),
->>>>>>> 802066368b458ca108b244836b85f17c60d1a09b
+]
+
+urlpatterns = [
+    path('health/', views.health_check, name='health_check'),
+    path('info/', views.api_info, name='api_info'),
+    path('predict-crop/', views.predict_crop_quality, name='predict_crop_quality'),
+    path('my-predictions/', views.get_user_predictions, name='get_user_predictions'),
+    path('', include(router.urls)),
+]
+
+urlpatterns = [
+    path('health/', views.health_check, name='health_check'),
+    path('info/', views.api_info, name='api_info'),
+    path('predict-crop/', views.predict_crop_quality, name='predict_crop_quality'),
+    path('my-predictions/', views.get_user_predictions, name='get_user_predictions'),
+    path('', include(router.urls)),
 ]
