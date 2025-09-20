@@ -6,17 +6,24 @@ from typing import Dict, Any, Optional, Tuple
 
 import requests
 import pandas as pd
-import google.generativeai as genai
 
+"""
+predict_price.py
 
-GEMINI_API_KEY: str = "AIzaSyB6cVOrM6picI_b43XB0YzIRIjp6jarI-Y"
-GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+This module provides a deterministic, local CSV-based estimator for agricultural
+commodity prices and simple weather/geocoding helpers. IMPORTANT: this file does
+NOT call any generative-AI or LLM services (Gemini, OpenAI, Anthropic, etc.).
+All estimates are derived from the local CSV dataset and public weather/
+geocoding APIs (Open-Meteo and Nominatim).
+"""
+# Use CSV/historical lookup estimator name
+ESTIMATOR_NAME: str = "local-csv-estimator"
 
 OPEN_METEO_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 OPEN_METEO_WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
-DATASET_CSV_PATH = r"D:\Price Predication\csv\agridata_csv_202110311352.csv"
+DATASET_CSV_PATH = r"C:\Users\mkaka\OneDrive\Desktop\sih-2025\backend\csv\agridata_csv_202110311352.csv"
 
 COMMODITY_UPLIFT: Dict[str, float] = {
 	"cashew": 6.0,
@@ -142,6 +149,23 @@ def build_weather_snapshot(location_label: str, country: Optional[str], lat: flo
 	)
 
 
+def empty_weather_snapshot() -> WeatherSnapshot:
+	"""Return an empty/placeholder WeatherSnapshot used in tests and dataset-only
+	estimations. This is intentionally simple and deterministic (no external AI).
+	"""
+	return WeatherSnapshot(
+		latitude=0.0,
+		longitude=0.0,
+		name="",
+		country=None,
+		temperature_c=None,
+		windspeed_kph=None,
+		winddirection_deg=None,
+		precipitation_mm=None,
+		description="",
+	)
+
+
 def load_dataset(csv_path: str = DATASET_CSV_PATH) -> pd.DataFrame:
 	# Avoid DtypeWarning by disabling low_memory and reading strings safely
 	dtype_map = {"commodity_name": "string", "state": "string", "district": "string", "market": "string", "date": "string"}
@@ -235,16 +259,12 @@ def get_pricing_recommendations(crop_name: str, market_price: float) -> Dict[str
 	return recommendations
 
 
-def configure_gemini() -> None:
-	if not GEMINI_API_KEY:
-		raise RuntimeError("Missing GEMINI_API_KEY")
-	genai.configure(api_key=GEMINI_API_KEY)
+def estimate_price_from_csv(crop_name: str, kilograms: float, location_label: str, weather: WeatherSnapshot, trend: Dict[str, Any]) -> Dict[str, Any]:
+	"""Estimate price using CSV historical trends and simple rules.
 
-
-def ask_gemini_for_price(crop_name: str, kilograms: float, location_label: str, weather: WeatherSnapshot, trend: Dict[str, Any]) -> Dict[str, Any]:
-	configure_gemini()
-	model = genai.GenerativeModel(GEMINI_MODEL_NAME)
-
+	Deterministic calculation that uses medians/quantiles from the dataset
+	and crop uplift rules.
+	"""
 	uplift = get_uplift_for_crop(crop_name)
 	median = float(trend.get("perkg_median_12m") or trend.get("perkg_median_all") or 0.0)
 	p25 = float(trend.get("perkg_p25_all") or median)
@@ -252,83 +272,43 @@ def ask_gemini_for_price(crop_name: str, kilograms: float, location_label: str, 
 	median_u = median * uplift
 	p25_u = p25 * uplift
 	p75_u = p75 * uplift
+
 	lower_hint = round(max(0.1, p25_u * 0.9, median_u * 0.7), 2)
 	upper_hint = round(max(median_u * 1.5, p75_u * 1.3, lower_hint + 10), 2)
 
-	system_instructions = (
-		"You estimate current local market/retail prices per kg. "
-		"Anchor to provided dataset medians/quantiles (already unit-adjusted). "
-		"Weather is a minor qualitative factor. "
-		"Return STRICT JSON: {price_per_kg, currency, total_price, reasoning}."
-	)
+	# Simple weather adjustment: if heavy precipitation recently, nudge price down slightly
+	weather_adj = 0.0
+	if weather.precipitation_mm and weather.precipitation_mm > 50:
+		weather_adj = -0.05
+	elif weather.precipitation_mm and weather.precipitation_mm > 10:
+		weather_adj = -0.02
 
-	payload = {
-		"task": "Estimate current price per kg and total for a crop purchase.",
-		"crop_name": crop_name,
-		"quantity_kg": float(kilograms),
-		"location": location_label,
-		"weather": {
-			"summary": weather.description,
-			"temperature_c": weather.temperature_c,
-			"precipitation_mm": weather.precipitation_mm,
-			"windspeed_kph": weather.windspeed_kph,
-		} if weather.description else {},
-		"dataset_trend": {
-			"median_perkg": median,
-			"median_perkg_uplifted": median_u,
-			"p25_perkg_uplifted": p25_u,
-			"p75_perkg_uplifted": p75_u,
-		},
-		"price_hints": {
-			"lower_bound_hint": lower_hint,
-			"upper_bound_hint": upper_hint,
-			"instruction": "Keep price_per_kg between these bounds unless a strong, explicit reason exists; never below lower_bound_hint.",
-		},
-		"requirements": {
-			"currency_preference": "INR",
-			"rounding": "2 decimals",
-			"format": "strict JSON only"
-		},
-	}
+	# Choose price anchor: prefer 12-month median if available
+	anchor = median_u if (trend.get("perkg_median_12m") is not None) else median_u
 
-	response = model.generate_content([
-		system_instructions,
-		"\nINPUT JSON:\n",
-		json.dumps(payload, ensure_ascii=False)
-	])
+	# Apply a modest random-less heuristic: if recent median exists and is > overall median, bias up
+	if trend.get("perkg_median_12m") and trend.get("perkg_median_12m") > trend.get("perkg_median_all", 0):
+		anchor *= 1.03
 
-	text = (response.text or "").strip()
-	try:
-		if text.startswith("```json") or text.startswith("```"):
-			lines = text.splitlines()
-			if len(lines) >= 2 and lines[0].startswith("```") and lines[-1].startswith("```"):
-				text = "\n".join(lines[1:-1]).strip()
-		data = json.loads(text)
-	except Exception:
-		data = {"raw": text}
-
-	price_per_kg = data.get("price_per_kg")
-	currency = "INR"
-	total_price = data.get("total_price")
-
-	if isinstance(price_per_kg, (int, float)):
-		price_per_kg = float(max(lower_hint, min(float(price_per_kg), upper_hint)))
-	else:
-		price_per_kg = float(median_u) if median_u > 0 else lower_hint
-
-	# Always recompute total to ensure correctness
+	# Apply weather adjustment and clamp to hints
+	price_per_kg = round(max(lower_hint, min(anchor * (1 + weather_adj), upper_hint)), 2)
 	total_price = round(price_per_kg * float(kilograms), 2)
+
+	assumptions = (
+		f"Derived from dataset medians (median={median:.2f}, uplift={uplift}). "
+		f"Clamped to hints [{lower_hint}, {upper_hint}]."
+	)
 
 	return {
 		"crop_name": crop_name,
 		"quantity_kg": float(kilograms),
-		"price_per_kg": round(price_per_kg, 2),
-		"currency": currency,
+		"price_per_kg": price_per_kg,
+		"currency": "INR",
 		"total_price": total_price,
 		"weather_summary": weather.description if weather.description else None,
 		"location": location_label,
-		"model": GEMINI_MODEL_NAME,
-		"assumptions": data.get("reasoning") or data.get("assumptions") or None,
+		"model": ESTIMATOR_NAME,
+		"assumptions": assumptions,
 	}
 
 
@@ -454,7 +434,7 @@ def main() -> None:
 	trend = compute_trend_stats(df, crop, state if country == "India" else None)
 	if not trend or trend.get("rows", 0) == 0:
 		trend = compute_trend_stats(df, crop, None)
-	estimate = ask_gemini_for_price(crop, kg, f"{loc_name}, {country}" if country else loc_name, snapshot, trend)
+	estimate = estimate_price_from_csv(crop, kg, f"{loc_name}, {country}" if country else loc_name, snapshot, trend)
 	print_human_readable(estimate, trend, profit_margin, distributor_markup, retailer_markup)
 
 

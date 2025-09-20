@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -19,13 +21,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-f11wn5l^4pwj6vo#90=^$89r1sjxst2_q(5dk8x9bh5jalaj4c'
+def get_env_setting(name: str, default=None, required: bool = False):
+    val = os.environ.get(name, default)
+    if required and val is None:
+        raise ImproperlyConfigured(f"Missing required environment variable: {name}")
+    return val
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# SECURITY: read the secret from env in production
+SECRET_KEY = get_env_setting('DJANGO_SECRET_KEY', 'django-insecure-f11wn5l^4pwj6vo#90=^$89r1sjxst2_q(5dk8x9bh5jalaj4c')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+# DEBUG should be False in production; controlled via env var
+DEBUG = get_env_setting('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
+
+# ALLOWED_HOSTS should be set in production
+ALLOWED_HOSTS = get_env_setting('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')
 
 
 # Application definition
@@ -45,6 +54,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise middleware allows serving static files efficiently from
+    # the same Gunicorn/worker process in simple deployments.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -119,6 +131,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Use WhiteNoise staticfiles storage in production for efficient serving
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
