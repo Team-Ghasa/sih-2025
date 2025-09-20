@@ -103,81 +103,79 @@ export const PricePrediction = ({ onPredictionComplete }: PricePredictionProps) 
   return (
     <div className="space-y-6">
       {/* Price Prediction Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Crop Price Prediction
-          </CardTitle>
-          <CardDescription>
-            Get market price predictions and profit analysis for your crops
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="crop_name">Crop Name</Label>
-                <Select 
-                  value={formData.crop_name} 
-                  onValueChange={(value) => 
-                    setFormData(prev => ({ ...prev, crop_name: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select crop" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cropTypes.map(crop => (
-                      <SelectItem key={crop} value={crop}>{crop}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      {!predictionResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calculator className="h-5 w-5" />
+              Crop Price Prediction
+            </CardTitle>
+            <CardDescription>
+              Get market price predictions and profit analysis for your crops
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="crop_name">Crop Name</Label>
+                  <Select 
+                    value={formData.crop_name} 
+                    onValueChange={(value) => 
+                      setFormData(prev => ({ ...prev, crop_name: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select crop" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cropTypes.map(crop => (
+                        <SelectItem key={crop} value={crop}>{crop}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="quantity_kg">Quantity (kg)</Label>
+                  <Input
+                    id="quantity_kg"
+                    type="number"
+                    placeholder="100"
+                    value={formData.quantity_kg}
+                    onChange={(e) => setFormData(prev => ({ ...prev, quantity_kg: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    placeholder="City, State, Country"
+                    value={formData.location}
+                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                  />
+                </div>
               </div>
-              
-              <div>
-                <Label htmlFor="quantity_kg">Quantity (kg)</Label>
-                <Input
-                  id="quantity_kg"
-                  type="number"
-                  placeholder="100"
-                  value={formData.quantity_kg}
-                  onChange={(e) => setFormData(prev => ({ ...prev, quantity_kg: e.target.value }))}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  placeholder="City, State, Country"
-                  value={formData.location}
-                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                />
-              </div>
-            </div>
-            
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Predicting Price...
-                </>
-              ) : (
-                <>
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Predict Price
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="w-full"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Predicting Price...
+                  </>
+                ) : (
+                  <>
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Predict Price
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Prediction Results */}
       {predictionResult && (
@@ -211,7 +209,6 @@ export const PricePrediction = ({ onPredictionComplete }: PricePredictionProps) 
                   <p className="text-sm text-muted-foreground">Data Points</p>
                 </div>
               </div>
-              
               {predictionResult.weather_summary && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <div className="flex items-center gap-2 text-blue-700">
@@ -223,6 +220,11 @@ export const PricePrediction = ({ onPredictionComplete }: PricePredictionProps) 
                   </p>
                 </div>
               )}
+              <div className="mt-6 flex justify-end">
+                <Button variant="outline" onClick={() => setPredictionResult(null)}>
+                  New Prediction
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

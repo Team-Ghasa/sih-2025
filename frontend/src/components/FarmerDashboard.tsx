@@ -372,6 +372,36 @@ export const FarmerDashboard = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* Price Prediction Result at the Top */}
+      {pricePredictionResult && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Price Prediction Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="font-medium">Crop:</span> {pricePredictionResult.crop_name}
+              </div>
+              <div>
+                <span className="font-medium">Market Price:</span> ₹{pricePredictionResult.market_price.price_per_kg}/kg
+              </div>
+              <div>
+                <span className="font-medium">Total Value:</span> ₹{pricePredictionResult.market_price.total_price}
+              </div>
+              <div>
+                <span className="font-medium">Farmer Revenue:</span> ₹{pricePredictionResult.pricing_tiers.farmer_to_distributor.total_price}
+              </div>
+              <div>
+                <span className="font-medium">Farmer Profit:</span> ₹{pricePredictionResult.pricing_tiers.farmer_to_distributor.profit}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {/* System Status */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Blockchain Connection Status */}
@@ -472,12 +502,7 @@ export const FarmerDashboard = () => {
       </div>
 
       {/* Price Prediction Section */}
-      <PricePrediction 
-        onPredictionComplete={(result) => {
-          setPricePredictionResult(result);
-          toast.success(`Price prediction completed! Market price: ₹${result.market_price.price_per_kg}/kg`);
-        }}
-      />
+      {/* Remove any remaining Crop Price Prediction form UI and <PricePrediction /> component rendering. */}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Registration Form */}
@@ -677,7 +702,32 @@ export const FarmerDashboard = () => {
                   </>
                 )}
               </Button>
-              
+              <Button
+                type="button"
+                onClick={async () => {
+                  // Predict price using formData
+                  if (!formData.cropType || !formData.quantity || !formData.location) {
+                    toast.error('Please fill crop type, quantity, and location for price prediction');
+                    return;
+                  }
+                  try {
+                    const result = await pricePredictionApi.predictPrice({
+                      crop_name: formData.cropType,
+                      quantity_kg: parseFloat(formData.quantity),
+                      location: formData.location,
+                    });
+                    setPricePredictionResult(result);
+                    toast.success(`Price prediction completed! Market price: ₹${result.market_price.price_per_kg}/kg`);
+                  } catch (error: any) {
+                    toast.error(`Price prediction failed: ${error.message}`);
+                  }
+                }}
+                disabled={!formData.cropType || !formData.quantity || !formData.location}
+                className="flex items-center gap-2"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Predict
+              </Button>
               <Button
                 type="submit"
                 disabled={!qualityScore || !isConnected || !isUserRegistered || web3Loading}
@@ -756,33 +806,6 @@ export const FarmerDashboard = () => {
                           <span className="font-medium">Status:</span> 
                           <Badge variant="secondary" className="ml-2">Immutable Record</Badge>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Price Prediction Results */}
-                {pricePredictionResult && (
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      Price Prediction Results
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium">Crop:</span> {pricePredictionResult.crop_name}
-                      </div>
-                      <div>
-                        <span className="font-medium">Market Price:</span> ₹{pricePredictionResult.market_price.price_per_kg}/kg
-                      </div>
-                      <div>
-                        <span className="font-medium">Total Value:</span> ₹{pricePredictionResult.market_price.total_price}
-                      </div>
-                      <div>
-                        <span className="font-medium">Farmer Revenue:</span> ₹{pricePredictionResult.pricing_tiers.farmer_to_distributor.total_price}
-                      </div>
-                      <div>
-                        <span className="font-medium">Farmer Profit:</span> ₹{pricePredictionResult.pricing_tiers.farmer_to_distributor.profit}
                       </div>
                     </div>
                   </div>
