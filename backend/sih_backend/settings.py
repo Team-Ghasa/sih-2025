@@ -34,7 +34,20 @@ SECRET_KEY = get_env_setting('DJANGO_SECRET_KEY', 'django-insecure-f11wn5l^4pwj6
 DEBUG = get_env_setting('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
 # ALLOWED_HOSTS should be set in production
-ALLOWED_HOSTS = get_env_setting('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')
+raw_allowed = get_env_setting('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0')
+ALLOWED_HOSTS = [h.strip() for h in raw_allowed.split(',') if h.strip()]
+
+# Optionally trust forwarded host/proto headers when running behind a proxy
+USE_X_FORWARDED = get_env_setting('DJANGO_USE_X_FORWARDED', 'False').lower() in ('1', 'true', 'yes')
+if USE_X_FORWARDED:
+    # X-Forwarded-Proto is commonly used to indicate the original scheme
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+    USE_X_FORWARDED_PORT = True
+
+# Allow setting CSRF trusted origins via env (comma-separated)
+raw_csrf = get_env_setting('DJANGO_CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [u.strip() for u in raw_csrf.split(',') if u.strip()]
 
 
 # Application definition
