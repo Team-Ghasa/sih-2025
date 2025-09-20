@@ -26,6 +26,8 @@ interface Web3ContextType {
   getProduct: (productId: number) => Promise<any>;
   getProductsByFarmer: (farmerAddress: string) => Promise<number[]>;
   getStatusHistory: (productId: number) => Promise<any[]>;
+  getUser: (userAddress: string) => Promise<any>;
+  getAllFarmers: () => Promise<any[]>;
   
   // Loading states
   isLoading: boolean;
@@ -291,8 +293,31 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     }
 
     try {
-      return await productRegistrationContract.getProduct(productId);
+      const productData = await productRegistrationContract.getProduct(productId);
+      console.log('Raw product data from blockchain:', productData);
+      
+      // Convert tuple to object format
+      return {
+        id: Number(productData[0]),
+        cropType: productData[1],
+        variety: productData[2],
+        quantity: productData[3].toString(),
+        unit: productData[4],
+        farmerName: productData[5],
+        farmerLocation: productData[6],
+        farmerContact: productData[7],
+        harvestDate: Number(productData[8]),
+        qualityScore: Number(productData[9]),
+        description: productData[10],
+        imageHash: productData[11],
+        status: Number(productData[12]),
+        currentOwner: productData[13],
+        isVerified: productData[14],
+        createdAt: Number(productData[15]),
+        updatedAt: Number(productData[16])
+      };
     } catch (error: any) {
+      console.error('Error getting product:', error);
       setError(error.message || 'Failed to get product');
       throw error;
     }
@@ -325,6 +350,48 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     }
   };
 
+  const getUser = async (userAddress: string) => {
+    if (!productRegistrationContract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      const userData = await productRegistrationContract.getUser(userAddress);
+      console.log('Raw user data from blockchain:', userData);
+      
+      // Convert tuple to object format
+      return {
+        name: userData[0],
+        role: Number(userData[1]),
+        location: userData[2],
+        contact: userData[3],
+        isRegistered: userData[4],
+        registeredAt: Number(userData[5]),
+        address: userAddress
+      };
+    } catch (error: any) {
+      console.error('Error getting user:', error);
+      setError(error.message || 'Failed to get user');
+      throw error;
+    }
+  };
+
+  const getAllFarmers = async () => {
+    if (!productRegistrationContract) {
+      throw new Error('Contract not initialized');
+    }
+
+    try {
+      // This is a simplified implementation - in a real scenario, you'd need to track farmer addresses
+      // For now, we'll return an empty array and let the user manually enter farmer addresses
+      console.log('getAllFarmers called - returning empty array (manual lookup required)');
+      return [];
+    } catch (error: any) {
+      setError(error.message || 'Failed to get all farmers');
+      throw error;
+    }
+  };
+
   const value: Web3ContextType = {
     isConnected,
     account,
@@ -342,6 +409,8 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     getProduct,
     getProductsByFarmer,
     getStatusHistory,
+    getUser,
+    getAllFarmers,
     isLoading,
     error,
   };

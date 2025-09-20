@@ -11,6 +11,7 @@ import { useTranslation } from "@/contexts/TranslationContext";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { WEB3_CONFIG } from "@/config/web3Config";
 import { QRCodeGenerator } from "@/components/QRCodeGenerator";
+import { cropPredictionApi, CropPredictionResult } from "@/services/cropPredictionApi";
 import { 
   Upload, 
   Camera, 
@@ -49,6 +50,7 @@ export const FarmerDashboard = () => {
   
   const [images, setImages] = useState<File[]>([]);
   const [qualityScore, setQualityScore] = useState<number | null>(null);
+  const [predictionResult, setPredictionResult] = useState<CropPredictionResult | null>(null);
   const [blockchainHash, setBlockchainHash] = useState<string>("");
   const [qrCode, setQrCode] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -56,6 +58,25 @@ export const FarmerDashboard = () => {
   const [locationError, setLocationError] = useState<string>("");
   const [productId, setProductId] = useState<number | null>(null);
   const [isUserRegistered, setIsUserRegistered] = useState(false);
+  const [apiAvailable, setApiAvailable] = useState<boolean | null>(null);
+
+  // Check API availability on component mount
+  useEffect(() => {
+    const checkApi = async () => {
+      try {
+        const isAvailable = await cropPredictionApi.checkApiHealth();
+        setApiAvailable(isAvailable);
+        if (!isAvailable) {
+          toast.warning("Crop prediction API is not available. Using fallback mode.");
+        }
+      } catch (error) {
+        setApiAvailable(false);
+        toast.warning("Crop prediction API is not available. Using fallback mode.");
+      }
+    };
+    
+    checkApi();
+  }, []);
 
   // Auto-request location permission on component mount
   useEffect(() => {
@@ -145,8 +166,46 @@ export const FarmerDashboard = () => {
 
     setIsProcessing(true);
     
-    // Simulate AI quality analysis
-    setTimeout(() => {
+    try {
+      // Use the first uploaded image for prediction
+      const imageFile = images[0];
+      
+      if (apiAvailable) {
+        // Use real ML prediction API
+        const result = await cropPredictionApi.predictCropQuality(imageFile);
+        
+        // Convert quality score to percentage (0-1 to 0-100)
+        const scorePercentage = Math.round(result.quality_score * 100);
+        
+        setPredictionResult(result);
+        setQualityScore(scorePercentage);
+        
+        // Generate blockchain hash and QR code
+        const hash = "0x" + Math.random().toString(16).substr(2, 10);
+        const qr = `https://agritrace.app/verify/${result.id}`;
+        
+        setBlockchainHash(hash);
+        setQrCode(qr);
+        
+        toast.success(
+          `Quality check complete! Predicted: ${result.predicted_quality} (${scorePercentage}% confidence: ${Math.round(result.prediction_confidence * 100)}%)`
+        );
+      } else {
+        // Fallback to mock prediction if API is not available
+        const score = Math.floor(Math.random() * 20) + 80; // 80-99%
+        const hash = "0x" + Math.random().toString(16).substr(2, 10);
+        const qr = `https://agritrace.app/verify/${hash}`;
+        
+        setQualityScore(score);
+        setBlockchainHash(hash);
+        setQrCode(qr);
+        
+        toast.success(t('message.quality_check_complete').replace('{score}', score.toString()) + ' (Mock prediction)');
+      }
+    } catch (error: any) {
+      console.error('Quality check failed:', error);
+      
+      // Fallback to mock prediction on error
       const score = Math.floor(Math.random() * 20) + 80; // 80-99%
       const hash = "0x" + Math.random().toString(16).substr(2, 10);
       const qr = `https://agritrace.app/verify/${hash}`;
@@ -154,10 +213,11 @@ export const FarmerDashboard = () => {
       setQualityScore(score);
       setBlockchainHash(hash);
       setQrCode(qr);
-      setIsProcessing(false);
       
-      toast.success(t('message.quality_check_complete').replace('{score}', score.toString()));
-    }, 3000);
+      toast.warning(`API error, using fallback prediction: ${score}%`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleVoiceAssistant = () => {
@@ -316,45 +376,77 @@ export const FarmerDashboard = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* Blockchain Connection Status */}
-      <Card className="border-2 border-primary/20 bg-primary/5">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-              <div>
-                <h3 className="font-semibold">
-                  {isConnected ? 'Blockchain Connected' : 'Blockchain Disconnected'}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {isConnected ? `Wallet: ${account?.slice(0, 6)}...${account?.slice(-4)}` : 'Connect your wallet to register products on blockchain'}
-                </p>
+      {/* System Status */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Blockchain Connection Status */}
+        <Card className="border-2 border-primary/20 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                <div>
+                  <h3 className="font-semibold">
+                    {isConnected ? 'Blockchain Connected' : 'Blockchain Disconnected'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {isConnected ? `Wallet: ${account?.slice(0, 6)}...${account?.slice(-4)}` : 'Connect your wallet to register products on blockchain'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {!isConnected ? (
+                  <Button onClick={connectWallet} size="sm">
+                    Connect Wallet
+                  </Button>
+                ) : !isUserRegistered ? (
+                  <Button onClick={registerUserOnBlockchain} size="sm" disabled={web3Loading}>
+                    {web3Loading ? 'Registering...' : 'Register as Farmer'}
+                  </Button>
+                ) : (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" />
+                    Registered
+                  </Badge>
+                )}
               </div>
             </div>
-            <div className="flex gap-2">
-              {!isConnected ? (
-                <Button onClick={connectWallet} size="sm">
-                  Connect Wallet
-                </Button>
-              ) : !isUserRegistered ? (
-                <Button onClick={registerUserOnBlockchain} size="sm" disabled={web3Loading}>
-                  {web3Loading ? 'Registering...' : 'Register as Farmer'}
-                </Button>
-              ) : (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3" />
-                  Registered
-                </Badge>
-              )}
+            {web3Error && (
+              <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
+                {web3Error}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ML API Status */}
+        <Card className="border-2 border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${
+                  apiAvailable === null ? 'bg-yellow-500' : 
+                  apiAvailable ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                }`}></div>
+                <div>
+                  <h3 className="font-semibold">
+                    {apiAvailable === null ? 'Checking ML API...' : 
+                     apiAvailable ? 'ML Prediction API Active' : 'ML API Unavailable'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {apiAvailable === null ? 'Verifying connection to prediction service' :
+                     apiAvailable ? 'Real-time crop quality analysis available' : 
+                     'Using fallback prediction mode'}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                {apiAvailable ? 'AI Active' : 'Fallback'}
+              </Badge>
             </div>
-          </div>
-          {web3Error && (
-            <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-red-700 text-sm">
-              {web3Error}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="flex items-center justify-between">
         <div>
@@ -622,9 +714,20 @@ export const FarmerDashboard = () => {
                 <div className="text-center p-6 bg-success/10 rounded-lg border border-success/20">
                   <div className="text-4xl font-bold text-success mb-2">{qualityScore}%</div>
                   <p className="text-sm font-medium">Quality Score</p>
-                  <Badge variant="secondary" className="mt-2 bg-success/20 text-success">
-                    Premium Grade
-                  </Badge>
+                  <div className="flex flex-col gap-2 mt-3">
+                    <Badge variant="secondary" className="bg-success/20 text-success">
+                      {predictionResult ? 
+                        (predictionResult.predicted_quality === 'good' ? 'Good Quality' : 'Poor Quality') : 
+                        'Premium Grade'
+                      }
+                    </Badge>
+                    {predictionResult && (
+                      <div className="text-xs text-muted-foreground">
+                        <div>Confidence: {Math.round(predictionResult.prediction_confidence * 100)}%</div>
+                        <div>ML Model: {apiAvailable ? 'Active' : 'Fallback'}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Blockchain Information */}
