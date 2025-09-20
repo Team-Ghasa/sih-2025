@@ -4,7 +4,54 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, Tuple
 
-import requests
+# Prefer requests but provide a lightweight fallback using urllib if
+# the package is not installed in the environment (some deploys/builds
+# may temporarily miss the dependency). Code should call `http_get`
+# below instead of `requests.get` directly.
+try:
+	import requests  # type: ignore
+	_HAS_REQUESTS = True
+except Exception:
+	requests = None  # type: ignore
+	_HAS_REQUESTS = False
+
+import urllib.request
+import urllib.parse
+
+
+class _SimpleResponse:
+	def __init__(self, status: int, content: bytes):
+		self.status_code = status
+		self._content = content
+
+	def raise_for_status(self) -> None:
+		if not (200 <= int(self.status_code) < 300):
+			raise RuntimeError(f"HTTP error status: {self.status_code}")
+
+	def json(self):
+		return json.loads(self._content.decode("utf-8"))
+
+
+def http_get(url: str, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, timeout: int = 15):
+	"""Perform an HTTP GET using requests if available, otherwise urllib.
+
+	Returns an object with `.status_code`, `.raise_for_status()` and `.json()`.
+	"""
+	if _HAS_REQUESTS and requests is not None:
+		return requests.get(url, params=params, headers=headers or {}, timeout=timeout)
+
+	# Build URL with query string
+	if params:
+		qs = urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
+		sep = "&" if "?" in url else "?"
+		full = f"{url}{sep}{qs}"
+	else:
+		full = url
+
+	req = urllib.request.Request(full, headers=headers or {})
+	with urllib.request.urlopen(req, timeout=timeout) as resp:
+		body = resp.read()
+		return _SimpleResponse(resp.getcode(), body)
 import pandas as pd
 
 """
@@ -47,7 +94,7 @@ class WeatherSnapshot:
 
 def try_open_meteo_geocode(location: str) -> Optional[Tuple[float, float, str, Optional[str]]]:
 	params = {"name": location, "count": 1, "language": "en", "format": "json"}
-	resp = requests.get(OPEN_METEO_GEOCODE_URL, params=params, timeout=15)
+	resp = http_get(OPEN_METEO_GEOCODE_URL, params=params, timeout=15)
 	resp.raise_for_status()
 	data = resp.json()
 	results = data.get("results") or []
@@ -65,7 +112,7 @@ def try_open_meteo_geocode(location: str) -> Optional[Tuple[float, float, str, O
 def try_nominatim_geocode(location: str) -> Optional[Tuple[float, float, str, Optional[str], Optional[str]]]:
 	params = {"q": location, "format": "json", "limit": 1, "addressdetails": 1}
 	headers = {"User-Agent": "price-predictor/1.0 (contact: local)"}
-	resp = requests.get(NOMINATIM_URL, params=params, headers=headers, timeout=15)
+	resp = http_get(NOMINATIM_URL, params=params, headers=headers, timeout=15)
 	resp.raise_for_status()
 	arr = resp.json() or []
 	if not arr:
@@ -115,7 +162,7 @@ def fetch_current_weather(lat: float, lon: float) -> Dict[str, Any]:
 		],
 		"timezone": "auto",
 	}
-	resp = requests.get(OPEN_METEO_WEATHER_URL, params=params, timeout=15)
+	resp = http_get(OPEN_METEO_WEATHER_URL, params=params, timeout=15)
 	resp.raise_for_status()
 	return resp.json()
 
